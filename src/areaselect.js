@@ -7,93 +7,195 @@
 *  @author: Nikos M.  http://nikos-web-development.netai.net/
 *
 **/
-//
-// IN PROGRESS
-//
 (function(root, undef) {
 
     var abs = Math.abs,
-        max = Math.max,
-        min = Math.min,
-        round = Math.round
+        delay = 100
     ;
 
-    function div(className) {
+    function div(className) 
+    {
         var d = document.createElement('div');
         if (className) d.className = className;
         return d;
     }
+    
+    // http://stackoverflow.com/questions/2490825/how-to-trigger-event-in-javascript
+    function triggerEvent(el, eventType) 
+    {
+        var event; // The custom event that will be created
 
+        if (document.createEvent) 
+        {
+            event = document.createEvent("HTMLEvents");
+            event.initEvent(eventType, true, true);
+        } 
+        else 
+        {
+            event = document.createEventObject();
+            event.eventType = eventType;
+        }
+
+        event.eventName = eventType;
+
+        if (document.createEvent) 
+        {
+            el.dispatchEvent(event);
+        } 
+        else 
+        {
+            el.fireEvent("on" + event.eventType, event);
+        }
+    }
+    
+    // http://stackoverflow.com/questions/704564/disable-drag-and-drop-on-html-elements
+    // http://developer.nokia.com/Community/Wiki/How_to_disable_dragging_of_images_and_text_selection_in_web_pages
+    function disableDrag(el) 
+    {
+        // this works for FireFox and WebKit in future according to http://help.dottoro.com/lhqsqbtn.php
+        el.draggable = false;
+        // this works for older web layout engines
+        el.onmousedown = function(e) {
+            e.preventDefault();
+            return false;
+        };
+    }
+    
     var AreaSelect = function(el, options) {
         
         options = options || {};
         
         var self = this;
         
+        // http://stackoverflow.com/questions/704564/disable-drag-and-drop-on-html-elements
         this.setElement( el );
-        
-        this.domElement = div( options.className || 'img-area-select' );
-        this.domElement.style.position = 'absolute';
-        this.domElement.style.visibility = 'hidden';
-        this.domElement.style.zIndex = 10;
-        this.domElement.style.left = this.rect.left + 'px';
-        this.domElement.style.top = this.rect.top + 'px';
-        this.domElement.style.width = 0 + 'px';
-        this.domElement.style.height = 0 + 'px';
-        
-        this.container.appendChild( this.domElement );
         
         this.selection = { x1: null, y1: null, x2: null, y2: null };
         
+        var area = this.domElement = div( options.className || 'img-area-select' );
+        area.style.position = 'absolute';
+        area.style.display = 'none';
+        // if supported in the browser
+        // http://caniuse.com/#feat=pointer-events
+        // http://stackoverflow.com/questions/1009753/pass-mouse-events-through-absolutely-positioned-element
+        //area.style.pointerEvents = 'none';
+        area.style.zIndex = options.zIndex || 100;
+        area.style.left = 0 + 'px';
+        area.style.top = 0 + 'px';
+        area.style.width = 0 + 'px';
+        area.style.height = 0 + 'px';
         
-        /*var click = function(e) {
-            console.log([e.clientX, e.clientY]);
-            console.log([self.img.clientLeft, self.img.clientTop]);
-            console.log([self.rect.left, self.rect.top]);
-            console.log([self.img.scrollLeft, self.img.scrollTop]);
-            console.log([e.clientX - self.rect.left - self.img.clientLeft + self.img.scrollLeft, e.clientY - self.rect.top - self.img.clientTop + self.img.scrollTop]);
-        };*/
+        this.container.appendChild( area );
         
-        //this.img.addEventListener('click', click, false);
         
-        var onMouseDown = function(e) {
+        var w = 0, h = 0, left = 0, top = 0, curLeft = 0, curTop = 0, cursor;
+        
+        var onElMouseDown = function(e) {
+            
             // http://stackoverflow.com/questions/6773481/how-to-get-the-mouseevent-coordinates-for-an-element-that-has-css3-transform
             // http://www.quirksmode.org/js/events_properties.html#position
             // http://stackoverflow.com/questions/5755312/getting-mouse-position-relative-to-content-area-of-an-element
-            self.selection.x1 = e.clientX - self.rect.left - self.el.clientLeft + self.el.scrollLeft;
-            self.selection.y1 = e.clientY - self.rect.top - self.el.clientTop + self.el.scrollTop;
+            left = e.clientX - self.rect.left - self.el.clientLeft + self.el.scrollLeft;
+            top = e.clientY - self.rect.top - self.el.clientTop + self.el.scrollTop;
+            w = 0;
+            h = 0;
             
-            self.domElement.style.visibility = 'visible';
-            self.domElement.style.left = (self.el.offsetLeft + self.selection.x1) + 'px';
-            self.domElement.style.top = (self.el.offsetTop + self.selection.y1) + 'px';
-            self.domElement.style.width = 0 + 'px';
-            self.domElement.style.height = 0 + 'px';
+            cursor = self.el.style.cursor || 'auto';
+            self.el.style.cursor = area.style.cursor = 'se-resize';
             
-            self.el.addEventListener('mousemove', onMouseMove, false);
-            self.el.addEventListener('mouseup', onMouseUp, false);
+            area.style.display = 'block';
+            
+            area.style.left = (self.el.offsetLeft + left) + 'px';
+            area.style.top = (self.el.offsetTop + top) + 'px';
+            area.style.width = w + 'px';
+            area.style.height = h + 'px';
+            
+            self.el.addEventListener('mousemove', onElMouseMove, false);
+            self.el.addEventListener('mouseup', onElMouseUp, false);
+            
+            return false;
         };
         
-        var onMouseMove = function(e) {
-            self.selection.x2 = e.clientX - self.rect.left - self.el.clientLeft + self.el.scrollLeft;
-            self.selection.y2 = e.clientY - self.rect.top - self.el.clientTop + self.el.scrollTop;
+        var onElMouseMove = function(e) {
             
-            self.domElement.style.width = (self.selection.x2 - self.selection.x1) + 'px';
-            self.domElement.style.height = (self.selection.y2 - self.selection.y1) + 'px';
-        };
-        
-        var onMouseUp = function(e) {
-            self.el.removeEventListener('mousemove', onMouseMove);
-            self.el.addEventListener('mouseup', onMouseUp);
+            var cursorX = 'e', cursorY = 's';
+            curLeft = e.clientX - self.rect.left - self.el.clientLeft + self.el.scrollLeft;
+            curTop = e.clientY - self.rect.top - self.el.clientTop + self.el.scrollTop;
             
-            if ( self.callback )
+            if (curLeft < left)
             {
-                self.callback.call( self, self.getSelection() );
+                w = left - curLeft;
+                area.style.left = (self.el.offsetLeft + curLeft) + 'px';
+                cursorX = 'w';
             }
+            else
+            {
+                if (curLeft == left)
+                    cursorX = '';
+                w = curLeft - left;
+            }
+            if (curTop < top)
+            {
+                h = top - curTop;
+                area.style.top = (self.el.offsetTop + curTop) + 'px';
+                cursorY = 'n';
+            }
+            else
+            {
+                if (curTop == top)
+                    cursorY = '';
+                h = curTop - top;
+            }
+            
+            area.style.width = w + 'px';
+            area.style.height = h + 'px';
+            self.el.style.cursor = area.style.cursor = cursorY+cursorX+'-resize';
+            
+            return false;
         };
         
-        if (options.onSelection) this.onSelection( options.onSelection );
+        var onElMouseUp = function(e) {
+            
+            self.selection = {
+                x1: (curLeft < left) ? curLeft : left,
+                y1: (curTop < top) ? curTop : top,
+                x2: (curLeft > left) ? curLeft : left,
+                y2: (curTop > top) ? curTop : top
+            };
+            left = top = curLeft = curTop = w = h = 0;
+            
+            self.el.style.cursor = cursor;
+            area.style.cursor = 'auto';
+            
+            self.el.removeEventListener('mousemove', onElMouseMove);
+            self.el.removeEventListener('mouseup', onElMouseUp);
+            
+            setTimeout(function(){
+                
+                if ( self.callback )
+                    
+                    self.callback.call( self, self.getSelection() );
+            
+            }, delay);
+            
+            return false;
+        };
         
-        this.el.addEventListener('mousedown', onMouseDown, false);
+        var onThisMouseDown = function(e) {
+            triggerEvent(self.el, 'mousedown');
+            return false;
+        };
+        
+        var onThisMouseUp = function(e) {
+            triggerEvent(self.el, 'mouseup');
+            return false;
+        };
+        
+        if ( options.onSelection ) this.onSelection( options.onSelection );
+        
+        this.el.addEventListener('mousedown', onElMouseDown, false);
+        area.addEventListener('mousedown', onThisMouseDown, false);
+        area.addEventListener('mouseup', onThisMouseUp, false);
     };
     
     AreaSelect.prototype = {
@@ -109,18 +211,25 @@
         
         setElement : function(el) {
             this.el = el;
+            disableDrag(this.el);
+            this.container = this.el.parentNode;
+            this.rect = this.el.getBoundingClientRect();
+            return this;
+        },
+        
+        refresh : function() {
             this.container = this.el.parentNode;
             this.rect = this.el.getBoundingClientRect();
             return this;
         },
         
         showSelection : function() {
-            this.domElement.style.visibility = 'visible';
+            this.domElement.style.display = 'block';
             return this;
         },
         
         hideSelection : function() {
-            this.domElement.style.visibility = 'hidden';
+            this.domElement.style.display = 'none';
             return this;
         },
         
