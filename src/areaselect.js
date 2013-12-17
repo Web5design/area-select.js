@@ -135,6 +135,7 @@
             //left = e.clientX + window.pageXOffset - rect.left;
             //top = e.clientY + window.pageYOffset - rect.top;
             
+            // http://www.jacklmoore.com/notes/mouse-position/
             var target = el, //e.target || e.srcElement,
                 style = target.currentStyle || window.getComputedStyle(target, null),
                 borderLeftWidth = parseInt(style['borderLeftWidth'], 10),
@@ -181,6 +182,7 @@
             //curLeft = e.clientX + window.pageXOffset - rect.left;
             //curTop = e.clientY + window.pageYOffset - rect.top;
             
+            // http://www.jacklmoore.com/notes/mouse-position/
             var target = el, //e.target || e.srcElement,
                 style = target.currentStyle || window.getComputedStyle(target, null),
                 borderLeftWidth = parseInt(style['borderLeftWidth'], 10),
