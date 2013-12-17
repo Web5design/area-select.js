@@ -9,7 +9,7 @@
 **/
 (function(root, undef) {
 
-    var abs = Math.abs,
+    var abs = Math.abs, min = Math.min,
         delay = 100,
         window = root
     ;
@@ -43,27 +43,6 @@
             el.detachEvent ('on'+event, handler); 
     }
     
-    // http://stackoverflow.com/questions/2490825/how-to-trigger-event-in-javascript
-    /*function triggerEvent(el, event) 
-    {
-        var e; // The custom event that will be created
-
-        if ( document.createEvent ) 
-        {
-            e = document.createEvent("HTMLEvents");
-            e.initEvent(event, true, true);
-            e.eventName = event;
-            el.dispatchEvent(e);
-        } 
-        else 
-        {
-            e = document.createEventObject();
-            e.eventType = event;
-            e.eventName = event;
-            el.fireEvent("on" + e.eventType, e);
-        }
-    }*/
-    
     // http://stackoverflow.com/questions/704564/disable-drag-and-drop-on-html-elements
     // http://developer.nokia.com/Community/Wiki/How_to_disable_dragging_of_images_and_text_selection_in_web_pages
     function disableDrag(el) 
@@ -76,25 +55,6 @@
             return false;
         };
     }
-    
-    // http://stackoverflow.com/questions/442404/retrieve-the-position-x-y-of-an-html-element
-    /*function getOffset( el ) 
-    {
-        var _x = 0;
-        var _y = 0;
-        while( el && !isNaN( el.offsetLeft ) && !isNaN( el.offsetTop ) ) 
-        {
-            _x += el.offsetLeft - el.scrollLeft;
-            _y += el.offsetTop - el.scrollTop;
-            el = el.offsetParent;
-        }
-        return { top: _y, left: _x };
-    }    
-    
-    function getRect( el ) 
-    {
-        return el.getBoundingClientRect();    
-    }*/   
     
     var AreaSelect = function(el, options) {
         
@@ -109,10 +69,6 @@
         var area = this.domElement = div( options.className || 'img-area-select' );
         area.style.position = 'absolute';
         area.style.display = 'none';
-        // if supported in the browser
-        // http://caniuse.com/#feat=pointer-events
-        // http://stackoverflow.com/questions/1009753/pass-mouse-events-through-absolutely-positioned-element
-        //area.style.pointerEvents = 'none';
         area.style.zIndex = options.zIndex || 100;
         area.style.left = 0 + 'px';
         area.style.top = 0 + 'px';
@@ -124,32 +80,26 @@
         
         var w = 0, h = 0, left = 0, top = 0, curLeft = 0, curTop = 0, cursor;
         
+        var withBorders = (undef !==options.withBorders ) ? options.withBorders : true;
+        
         var onElMouseDown = function(e) {
             
             e = e || window.event;
             
-            var el = self.el;
-            // http://stackoverflow.com/questions/6773481/how-to-get-the-mouseevent-coordinates-for-an-element-that-has-css3-transform
-            // http://www.quirksmode.org/js/events_properties.html#position
-            // http://stackoverflow.com/questions/5755312/getting-mouse-position-relative-to-content-area-of-an-element
-            //left = e.clientX + window.pageXOffset - rect.left;
-            //top = e.clientY + window.pageYOffset - rect.top;
-            
             // http://www.jacklmoore.com/notes/mouse-position/
-            var target = el, //e.target || e.srcElement,
-                style = target.currentStyle || window.getComputedStyle(target, null),
-                borderLeftWidth = parseInt(style['borderLeftWidth'], 10),
-                borderTopWidth = parseInt(style['borderTopWidth'], 10),
-                rect = target.getBoundingClientRect()
+            var el = self.el, style = el.currentStyle || window.getComputedStyle(el, null),
+                borderLeftWidth = (withBorders) ? parseInt(style['borderLeftWidth'], 10) : 0,
+                borderTopWidth = (withBorders) ? parseInt(style['borderTopWidth'], 10) : 0,
+                rect = el.getBoundingClientRect()
             ;
 
             left = e.clientX - borderLeftWidth - rect.left;
             top = e.clientY - borderTopWidth - rect.top;
             
             if (left < 0) left = 0;
-            else if (left > el.offsetWidth) left = el.offsetWidth;
+            else if (left >= el.offsetWidth) left = el.offsetWidth-1;
             if (top < 0) top = 0;
-            else if (top > el.offsetHeight) top = el.offsetHeight;
+            else if (top >= el.offsetHeight) top = el.offsetHeight-1;
             
             w = 0;
             h = 0;
@@ -176,30 +126,26 @@
             
             e = e || window.event;
             
-            var el = self.el;
-            var cursorX = 'e', cursorY = 's';
-            
-            //curLeft = e.clientX + window.pageXOffset - rect.left;
-            //curTop = e.clientY + window.pageYOffset - rect.top;
-            
             // http://www.jacklmoore.com/notes/mouse-position/
-            var target = el, //e.target || e.srcElement,
-                style = target.currentStyle || window.getComputedStyle(target, null),
-                borderLeftWidth = parseInt(style['borderLeftWidth'], 10),
-                borderTopWidth = parseInt(style['borderTopWidth'], 10),
-                rect = target.getBoundingClientRect()
+            var el = self.el, style = el.currentStyle || window.getComputedStyle(el, null),
+                borderLeftWidth = (withBorders) ? parseInt(style['borderLeftWidth'], 10) : 0,
+                borderTopWidth = (withBorders) ? parseInt(style['borderTopWidth'], 10) : 0,
+                rect = el.getBoundingClientRect()
             ;
+
+            var cursorX = 'e', cursorY = 's', x, y;
 
             curLeft = e.clientX - borderLeftWidth - rect.left;
             curTop = e.clientY - borderTopWidth - rect.top;
             
             if (curLeft < 0) curLeft = 0;
-            else if (curLeft > el.offsetWidth) curLeft = el.offsetWidth;
+            else if (curLeft >= el.offsetWidth) curLeft = el.offsetWidth-1;
             if (curTop < 0) curTop = 0;
-            else if (curTop > el.offsetHeight) curTop = el.offsetHeight;
+            else if (curTop >= el.offsetHeight) curTop = el.offsetHeight-1;
             
             if ( curLeft < left )
             {
+                x = curLeft;
                 area.style.left = (el.offsetLeft - el.scrollLeft + curLeft) + 'px';
                 w = left - curLeft;
                 cursorX = 'w';
@@ -207,12 +153,14 @@
             else
             {
                 if ( curLeft == left )  cursorX = '';
+                x = left;
                 area.style.left = (el.offsetLeft - el.scrollLeft + left) + 'px';
                 w = curLeft - left;
             }
             
             if ( curTop < top )
             {
+                y = curTop;
                 area.style.top = (el.offsetTop - el.scrollTop + curTop) + 'px';
                 h = top - curTop;
                 cursorY = 'n';
@@ -220,9 +168,13 @@
             else
             {
                 if ( curTop == top )  cursorY = '';
+                y = top;
                 area.style.top = (el.offsetTop - el.scrollTop + top) + 'px';
                 h = curTop - top;
             }
+            
+            if ( x+w > el.offsetWidth ) w = el.offsetWidth-x-1;
+            if ( y+h > el.offsetHeight ) h = el.offsetHeight-y-1;
             
             area.style.width = w + 'px';
             area.style.height = h + 'px';
@@ -261,28 +213,10 @@
             
             return false;
         };
-        /*
-        var onThisMouseDown = function(e) {
-            triggerEvent(self.el, 'mousedown');
-            return false;
-        };
         
-        var onThisMouseMove = function(e) {
-            triggerEvent(self.el, 'mousemove');
-            return false;
-        };
-        
-        var onThisMouseUp = function(e) {
-            triggerEvent(self.el, 'mouseup');
-            return false;
-        };
-        */
         if ( options.onSelection ) this.onSelection( options.onSelection );
         
         addEvent(self.el, 'mousedown', onElMouseDown);
-        /*addEvent(area, 'mousedown', onThisMouseDown);
-        addEvent(area, 'mousemove', onThisMouseMove);
-        addEvent(area, 'mouseup', onThisMouseUp);*/
         addEvent(area, 'mousedown', onElMouseDown);
     };
     
@@ -292,7 +226,6 @@
         
         el : null,
         container : null,
-        //rect : null,
         domElement : null,
         selection : null,
         callback : null,
@@ -301,13 +234,11 @@
             this.el = el;
             disableDrag(this.el);
             this.container = this.el.parentNode;
-            //this.rect = getOffset( this.el );
             return this;
         },
         
         refresh : function() {
             this.container = this.el.parentNode;
-            //this.rect = getOffset( this.el );
             return this;
         },
         
